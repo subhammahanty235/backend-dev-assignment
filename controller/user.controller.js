@@ -14,7 +14,7 @@ const adduserorAdmin = async (req, res) => {
     // get user's current role
 
     const user_role = await User.findOne({ _id: currentuserId }).select("role")
-
+    console.log(user_role)
 
     // All required fields are provided?
     if (!req.body.firstName || !req.body.lastName || !req.body.email || !req.body.password || !req.body.role) {
@@ -37,32 +37,34 @@ const adduserorAdmin = async (req, res) => {
     }
 
     // Check if user's role is 'User' and user is trying to add Admin , which is not allowed
-    if (user_role === 'User' && req.body.role === 'Admin') {
+    if (user_role.role === 'User' && req.body.role === 'Admin') {
         return res.status(403).json({ message: 'You are not authorized to add an Admin' });
     }
+    else {
+        const salt = await bcrypt.genSalt(10);
+        secpass = await bcrypt.hash(req.body.password, salt);
 
-    const salt = await bcrypt.genSalt(10);
-    secpass = await bcrypt.hash(req.body.password, salt);
+        // Create a new user object
+        const newUser = new User({
+            firstName: req.body.firstName,
+            middleName: req.body.middleName,
+            lastName: req.body.lastName,
+            email: req.body.email,
+            password: secpass,
+            role: req.body.role,
+            department: req.body.department
+        });
 
-    // Create a new user object
-    const newUser = new User({
-        firstName: req.body.firstName,
-        middleName: req.body.middleName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        password: secpass,
-        role: req.body.role,
-        department: req.body.department
-    });
+        // Save the new user to the database
+        newUser.save()
+            .then(user => {
+                res.status(201).json({ message: 'User added successfully', user });
+            })
+            .catch(err => {
+                res.status(500).json({ message: err.message });
+            });
+    }
 
-    // Save the new user to the database
-    newUser.save()
-    .then(user => {
-        res.status(201).json({ message: 'User added successfully', user });       
-    })
-    .catch(err => {
-        res.status(500).json({ message: err.message });
-    });
 
 
 
@@ -91,8 +93,8 @@ const logIn = async (req, res) => {
         }
         // add login time to the Last Login data's database
         const userlogindata = {
-            userId:find_user_withemail.id,
-            lastLoginTime: new Date() 
+            userId: find_user_withemail.id,
+            lastLoginTime: new Date()
         }
         await LastLogin.updateOne({ _id: find_user_withemail.id }, userlogindata,
             { upsert: true, new: true })
@@ -210,7 +212,7 @@ const viewUsers = async (req, res) => {
 
 
     }
-    else{
+    else {
 
     }
 
@@ -218,4 +220,4 @@ const viewUsers = async (req, res) => {
 
 
 
-module.exports = {adduserorAdmin , logIn , updateUser , viewUsers}
+module.exports = { adduserorAdmin, logIn, updateUser, viewUsers }
