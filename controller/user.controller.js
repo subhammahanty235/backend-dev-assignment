@@ -41,6 +41,8 @@ const adduserorAdmin = async (req, res) => {
         return res.status(403).json({ message: 'You are not authorized to add an Admin' });
     }
 
+    const salt = await bcrypt.genSalt(10);
+    secpass = await bcrypt.hash(req.body.password, salt);
 
     // Create a new user object
     const newUser = new User({
@@ -48,18 +50,20 @@ const adduserorAdmin = async (req, res) => {
         middleName: req.body.middleName,
         lastName: req.body.lastName,
         email: req.body.email,
-        password: req.body.password,
+        password: secpass,
         role: req.body.role,
         department: req.body.department
     });
 
     // Save the new user to the database
-    newUser.save((err, user) => {
-        if (err) {
-            return res.status(500).json({ message: err.message });
-        }
-        res.status(201).json({ message: 'User added successfully', user });
+    newUser.save()
+    .then(user => {
+        res.status(201).json({ message: 'User added successfully', user });       
+    })
+    .catch(err => {
+        res.status(500).json({ message: err.message });
     });
+
 
 
 };
@@ -86,7 +90,11 @@ const logIn = async (req, res) => {
             }
         }
         // add login time to the Last Login data's database
-        await LastLogin.updateOne({ _id: find_user_withemail.id }, { lastLoginTime: new Date() },
+        const userlogindata = {
+            userId:find_user_withemail.id,
+            lastLoginTime: new Date() 
+        }
+        await LastLogin.updateOne({ _id: find_user_withemail.id }, userlogindata,
             { upsert: true, new: true })
 
         // generate token
@@ -99,6 +107,7 @@ const logIn = async (req, res) => {
         }
         res.status(201).json({ message: "Login Successful", instruction: "Provide this token in the header which calling a API", authtoke: generated_token })
     } catch (error) {
+        console.log(error)
         res.status(500).send("internal server error")
     }
 
@@ -202,10 +211,11 @@ const viewUsers = async (req, res) => {
 
     }
     else{
-        
+
     }
 
 }
 
 
 
+module.exports = {adduserorAdmin , logIn , updateUser , viewUsers}

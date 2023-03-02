@@ -5,7 +5,7 @@ const fetchUser =(req, res, next) => {
         res.status(400).send("Please provide a valid auth token")
     }
     try {
-        const data = jwt.verify(authtoken, "jwtverify7263")
+        const data = jwt.verify(authtoken, process.env.JWT_SECRET)
         req.user = data.user;
         next();
     } catch (error) {
@@ -13,5 +13,5 @@ const fetchUser =(req, res, next) => {
     }
 
 }
-
+ 
 module.exports = fetchUser

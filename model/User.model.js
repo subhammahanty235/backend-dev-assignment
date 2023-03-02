@@ -32,12 +32,12 @@ const userSchema = new Schema({
     required: false
   },
   createdTime: {
-    type: Date,
-    default: Date.now
+    type:Date,
+    default:new Date()
   },
   updatedTime: {
-    type: Date,
-    default: Date.now
+    type:Date,
+    default:new Date()
   }
 });
 
