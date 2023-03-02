@@ -1,5 +1,7 @@
 
 const User = require('../model/User.model')
+const LastLogin = require('../model/UserActivity.model')
+const UpdatedFields = require('../model/UserUpdatedData.model')
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken")
 
@@ -63,4 +65,91 @@ const adduserorAdmin = async (req, res) => {
 };
 
 // login function , to allow user or admin login with their credentials provided by the admin or Another User , and after login is successfull a token will generate which will allow them to perform other operations
+
+const logIn = async (req, res) => {
+    const { email, password } = req.body
+    try {
+
+        const find_user_withemail = await User.findOne({ email: email })
+
+        if (!find_user_withemail) {
+            return res.status(404).json({ error: "Please try to log in with correct credentials" });
+        }
+        let compare_passwords = await bcrypt.compare(password, find_user_withemail.password)
+        if (!compare_passwords) {
+            return res.status(404).json({ error: "Please try to log in with correct credentials" });
+        }
+
+        const data = {
+            user: {
+                id: find_user_withemail.id           //only adding the id to the token
+            }
+        }
+        // add login time to the Last Login data's database
+        await LastLogin.updateOne({_id:find_user_withemail.id  } , { lastLoginTime: new Date() },
+        { upsert: true, new: true })
+
+        // generate token
+
+        const generated_token = jwt.sign(data, process.env.JWT_SECRET)
+
+
+        if (!generated_token) {
+            return res.status(404).json({ error: "Error occured while generating your token , Try again later!" });
+        }
+        res.status(201).json({ message: "Login Successful", instruction: "Provide this token in the header which calling a API", authtoke: generated_token })
+    } catch (error) {
+        res.status(500).send("internal server error")
+    }
+
+}
+
+const updateUser = async (req, res) => {
+
+    try {
+        const userId = req.params.id; // Get the user ID from the request parameters
+        const currentUserId = req.user.id;
+        const updatedata = req.body;
+        const fieldstoUpdate = Object.keys(req.body);
+
+
+        // Check if the current user is authorized to update the user
+        const current_user_role = await User.findOne({ _id: currentUserId }).select("role")
+
+        const userToUpdate = await User.findById(userId).select("-password");
+        if (!userToUpdate) {
+            return res.status(404).send({ message: 'User not found' });
+        }
+        if (current_user_role === 'User' && userToUpdate.role === 'Admin') {
+            return res.status(403).send({ message: 'You are not authorized to update an Admin user' });
+        }
+
+        // Remove password field if present in the update fields
+        if (updatedata.hasOwnProperty('password')) {
+            delete updatedata.password;
+        }
+
+        // Update the user's information
+        const updatedUser = await User.findByIdAndUpdate(userId, updatedata, { new: true });
+        if (!updatedUser) {
+            return res.status(404).send({ message: 'User not found' });
+        }
+        // add data to the Updatedata database collection
+        const updatedField = new UpdatedFields({
+            userId:userId,
+            email:userToUpdate.email,
+            field:fieldstoUpdate,
+            oldValue:userToUpdate ,
+            newValue: updatedata
+          });
+          updatedField.save();
+        res.status(200).send(updatedUser);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Server error' });
+    }
+};
+
+
 
