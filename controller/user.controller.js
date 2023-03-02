@@ -86,8 +86,8 @@ const logIn = async (req, res) => {
             }
         }
         // add login time to the Last Login data's database
-        await LastLogin.updateOne({_id:find_user_withemail.id  } , { lastLoginTime: new Date() },
-        { upsert: true, new: true })
+        await LastLogin.updateOne({ _id: find_user_withemail.id }, { lastLoginTime: new Date() },
+            { upsert: true, new: true })
 
         // generate token
 
@@ -136,13 +136,14 @@ const updateUser = async (req, res) => {
         }
         // add data to the Updatedata database collection
         const updatedField = new UpdatedFields({
-            userId:userId,
-            email:userToUpdate.email,
-            field:fieldstoUpdate,
-            oldValue:userToUpdate ,
+            userId: userId,
+            role: userToUpdate.role,
+            email: userToUpdate.email,
+            field: fieldstoUpdate,
+            oldValue: userToUpdate,
             newValue: updatedata
-          });
-          updatedField.save();
+        });
+        updatedField.save();
         res.status(200).send(updatedUser);
 
     } catch (error) {
@@ -150,6 +151,61 @@ const updateUser = async (req, res) => {
         res.status(500).send({ message: 'Server error' });
     }
 };
+
+const viewUsers = async (req, res) => {
+    const userid = req.user.id
+
+    const userrole = await User.Findone({ _id: userid }).select("role")
+
+    if (userrole === "Admin") {
+        const result = await LastLogin.aggregate([
+            {
+                $lookup: {
+                    from: "updatedatas",
+                    localField: "userId",
+                    foreignField: "userId",
+                    as: "UpdatedData"
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    userid: 1,
+                    lastLoginTime: 1,
+                    updatedData: {
+                        $map: {
+                            _id: 0,
+                            userId: 1,
+                            lastLoginTime: 1,
+                            updatedData: {
+                                $map: {
+                                    input: "$inputData",
+                                    as: "data",
+                                    in: {
+                                        email: "$$data.email",
+                                        role: "$$data.role",
+                                        fieldschanged: "$$data.fieldschanged",
+                                        oldValue: "$$data.oldValue",
+                                        newValue: "$$data.newValue",
+                                        updatedTime: "$$data.updatedTime"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ]);
+
+        res.send(result)
+
+
+    }
+    else{
+        
+    }
+
+}
 
 
 

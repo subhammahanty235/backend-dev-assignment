@@ -3,12 +3,19 @@ const mongoose = require('mongoose');
 const updatedFieldsSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'user',
     required: true
   },
   email:{
-    type: String,
+    type:mongoose.Schema.Types.String,
+    ref:'user',
     required: true
+  },
+  role:{
+    type:mongoose.Schema.Types.String,
+    ref:'user',
+    required: true
+
   },
   fieldschanged: {
     type:[String]
