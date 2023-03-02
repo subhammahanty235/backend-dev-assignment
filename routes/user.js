@@ -5,7 +5,7 @@ const UserController = require("../controller/user.controller")
 
 router.post("/createnewuser" , fetchUser , UserController.adduserorAdmin)
 router.post("/login" ,UserController.logIn)
-router.put("/updateuser" , fetchUser , UserController.updateUser)
+router.put("/updateuser/:id" , fetchUser , UserController.updateUser)
 router.get("/viewdata" , fetchUser , UserController.viewUsers) 
 
 module.exports = router;

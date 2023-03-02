@@ -107,7 +107,7 @@ const logIn = async (req, res) => {
         if (!generated_token) {
             return res.status(404).json({ error: "Error occured while generating your token , Try again later!" });
         }
-        res.status(201).json({ message: "Login Successful", instruction: "Provide this token in the header which calling a API", authtoke: generated_token })
+        res.status(201).json({ message: "Login Successful", instruction: "Provide this token in the header which calling a API", authtoken: generated_token })
     } catch (error) {
         console.log(error)
         res.status(500).send("internal server error")
@@ -122,7 +122,7 @@ const updateUser = async (req, res) => {
         const currentUserId = req.user.id;
         const updatedata = req.body;
         const fieldstoUpdate = Object.keys(req.body);
-
+        console.log(fieldstoUpdate)
 
         // Check if the current user is authorized to update the user
         const current_user_role = await User.findOne({ _id: currentUserId }).select("role")
@@ -134,28 +134,30 @@ const updateUser = async (req, res) => {
         if (current_user_role === 'User' && userToUpdate.role === 'Admin') {
             return res.status(403).send({ message: 'You are not authorized to update an Admin user' });
         }
+        else {
+            // Remove password field if present in the update fields
+            if (updatedata.hasOwnProperty('password')) {
+                delete updatedata.password;
+            }
 
-        // Remove password field if present in the update fields
-        if (updatedata.hasOwnProperty('password')) {
-            delete updatedata.password;
+            // Update the user's information
+            const updatedUser = await User.findByIdAndUpdate(userId, updatedata, { new: true });
+            if (!updatedUser) {
+                return res.status(404).send({ message: 'User not found' });
+            }
+            // add data to the Updatedata database collection
+            const updatedField = new UpdatedFields({
+                userId: userId,
+                role: userToUpdate.role,
+                email: userToUpdate.email,
+                fieldschanged: fieldstoUpdate,
+                oldValue: userToUpdate,
+                newValue: updatedata
+            });
+            updatedField.save();
+            res.status(200).send(updatedUser);
         }
 
-        // Update the user's information
-        const updatedUser = await User.findByIdAndUpdate(userId, updatedata, { new: true });
-        if (!updatedUser) {
-            return res.status(404).send({ message: 'User not found' });
-        }
-        // add data to the Updatedata database collection
-        const updatedField = new UpdatedFields({
-            userId: userId,
-            role: userToUpdate.role,
-            email: userToUpdate.email,
-            field: fieldstoUpdate,
-            oldValue: userToUpdate,
-            newValue: updatedata
-        });
-        updatedField.save();
-        res.status(200).send(updatedUser);
 
     } catch (error) {
         console.error(error);
@@ -166,7 +168,7 @@ const updateUser = async (req, res) => {
 const viewUsers = async (req, res) => {
     const userid = req.user.id
 
-    const userrole = await User.Findone({ _id: userid }).select("role")
+    const userrole = await User.findOne({ _id: userid }).select("role")
 
     if (userrole === "Admin") {
         const result = await LastLogin.aggregate([
@@ -213,7 +215,7 @@ const viewUsers = async (req, res) => {
 
     }
     else {
-
+        res.send("can't find anything")
     }
 
 }
